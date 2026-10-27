@@ -1,0 +1,7 @@
+node_modules/
+session/
+data/sessions/
+data/*.db
+.env
+*.log
+.vf-state.json
