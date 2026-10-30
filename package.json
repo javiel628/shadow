@@ -1,28 +1,24 @@
 {
-  "name": "shadow-md-whatsapp",
-  "version": "1.0.0",
-  "description": "SHADOW MD WhatsApp Bot",
-  "main": "src/index.js",
+  "name": "shadow-md-pair",
+  "version": "1.1.0",
+  "private": true,
+  "description": "SHADOW MD WhatsApp bot with integrated SHADOW PAIR web portal",
+  "main": "backend/server.js",
   "type": "commonjs",
   "scripts": {
-    "start": "node src/index.js"
-  },
-  "keywords": [
-    "whatsapp",
-    "bot",
-    "shadow-md",
-    "baileys"
-  ],
-  "author": "SHADOW MD",
-  "license": "MIT",
-  "dependencies": {
-    "@whiskeysockets/baileys": "^npm:@animebails/baileys@latest",
-    "chalk": "^4.1.2",
-    "dotenv": "^16.4.5",
-    "pino": "^9.3.2",
-    "qrcode-terminal": "^0.12.0"
+    "start": "node backend/server.js",
+    "start:cli": "node src/index.js"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "6.7.18",
+    "chalk": "^4.1.2",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "js-confuser": "^1.7.3",
+    "pino": "^9.3.2",
+    "qrcode-terminal": "^0.12.0"
   }
 }
