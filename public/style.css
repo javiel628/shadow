@@ -23,33 +23,35 @@ body {
   color: var(--white);
   font-family: Inter, sans-serif;
   overflow-x: hidden;
-  background: var(--bg);
+  background: transparent;
 }
 
+/* BACKGROUND IMAGE */
 .background {
   position: fixed;
   inset: 0;
-  z-index: -4;
+  z-index: -3;
   background-image: url("https://files.catbox.moe/6s94uf.jpeg");
+  background-position: center center;
   background-size: cover;
-  background-position: center;
   background-repeat: no-repeat;
-  transform: scale(1.04);
+  opacity: 1;
 }
 
+/* DARK OVERLAY */
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: -3;
-  background:
-    linear-gradient(180deg, rgba(0,8,5,.80), rgba(0,5,8,.91)),
-    radial-gradient(circle at 50% 20%, rgba(0,255,102,.13), transparent 55%);
+  z-index: -2;
+  pointer-events: none;
+  background: rgba(0, 5, 8, 0.48);
 }
 
+/* HACKER EFFECTS */
 .scanlines {
   position: fixed;
   inset: 0;
-  z-index: -2;
+  z-index: -1;
   pointer-events: none;
   background: repeating-linear-gradient(
     transparent 0px,
@@ -68,7 +70,6 @@ body {
     linear-gradient(rgba(0,255,102,.045) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0,255,102,.045) 1px, transparent 1px);
   background-size: 35px 35px;
-  mask-image: linear-gradient(to bottom, black, transparent 90%);
 }
 
 .shell {
