@@ -1280,7 +1280,7 @@ case 'steal': {
         
         
         
-        ─────────────────────────
+        //─────────────────────────
         case 'autoreply':
         case 'autotype':
         case 'autorecord':
