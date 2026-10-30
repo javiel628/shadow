@@ -34,6 +34,9 @@ app.set('trust proxy', 1);
 app.use(express.json({ limit: '4kb' }));
 app.use(express.urlencoded({ extended: false, limit: '4kb' }));
 app.use(express.static(PUBLIC_DIR, { extensions: ['html'] }));
+app.set('trust proxy', 1);
+app.use(cookieParser());
+app.use('/api/admin', adminRouter);
 
 function jsonError(res, status, message) {
   return res.status(status).json({ ok: false, error: message });
