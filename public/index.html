@@ -3,13 +3,12 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <meta name="theme-color" content="#020706">
-  <meta name="description" content="SHADOW MD WhatsApp Pairing Portal">
-  <title>亗 𝐒𝐇𝐀𝐃𝐎𝐖 𝐌𝐃 𝐏𝐀𝐈𝐑 亗</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#050b10">
+  <title>SHADOW MD PAIR</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Orbitron:wght@500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="/style.css">
 </head>
@@ -17,131 +16,147 @@
 
   <div class="background"></div>
   <div class="overlay"></div>
-  <div class="scanlines"></div>
   <div class="grid-bg"></div>
 
   <main class="shell">
 
     <header class="topbar">
-      <a class="brand" href="/">
-        <span class="brand-mark">亗</span>
-        <span class="brand-name">
-          SHADOW <span>MD</span>
-          <small>PAIRING TERMINAL</small>
-        </span>
+      <a href="/" class="brand">
+        <span class="brand-icon">亗</span>
+        <span>SHADOW <b>MD</b></span>
       </a>
 
-      <span class="live">
-        <i></i> SYSTEM ONLINE
-      </span>
+      <div class="online">
+        <span class="online-dot"></span>
+        PAIRING PORTAL
+      </div>
     </header>
 
-    <section class="hero">
-      <div class="eyebrow">
-        <span></span> SECURE CONNECTION ESTABLISHED
-      </div>
-
-      <h1>
-        SHADOW<br>
-        <span>PAIR</span>
-      </h1>
-
-      <div class="hero-line"></div>
-
-      <p class="intro">
-        Welcome to the <strong>SHADOW MD</strong> pairing terminal.
-        Connect your own WhatsApp account using a real pairing code.
-      </p>
-
-      <div class="terminal-info">
-        <span>ROOT ACCESS</span>
-        <span class="terminal-green">● ACTIVE</span>
-      </div>
+    <section class="welcome">
+      <div class="eyebrow">WHATSAPP CONNECTION SYSTEM</div>
+      <h1>SHADOW <span>PAIR</span></h1>
+      <p>Connect your WhatsApp account securely using a pairing code.</p>
     </section>
 
-    <section class="panel">
+    <section class="pair-card">
 
-      <div class="panel-head">
+      <div class="card-heading">
+        <div class="card-icon">⌁</div>
         <div>
-          <span class="step">[ 01 ] INITIALIZE</span>
-          <h2>Generate Pair Code</h2>
+          <h2>Connect WhatsApp</h2>
+          <p>Enter your WhatsApp number below</p>
         </div>
-
-        <div class="lock">⌑ ENCRYPTED</div>
       </div>
 
       <form id="pairForm">
+        <label for="number">PHONE NUMBER</label>
 
-        <label for="number">WHATSAPP NUMBER</label>
-
-        <div class="phone-wrap">
-          <span class="prefix">+</span>
+        <div class="input-wrap">
+          <span class="country-prefix">+</span>
           <input
+            type="tel"
             id="number"
             name="number"
-            type="tel"
-            inputmode="numeric"
+            placeholder="2547XXXXXXXX"
             autocomplete="tel"
-            placeholder="254712345678"
-            minlength="8"
-            maxlength="15"
             required
           >
         </div>
 
-        <p class="hint">
-          Enter your international phone number with country code.
-        </p>
+        <small class="input-hint">
+          Include your country code without the plus sign.
+        </small>
 
-        <button id="generateBtn" class="primary" type="submit">
+        <button type="submit" id="generateBtn" class="generate-btn">
           <span>GENERATE PAIRING CODE</span>
-          <b>↗</b>
+          <span class="btn-arrow">→</span>
         </button>
-
       </form>
 
-      <div id="result" class="result hidden" aria-live="polite">
-
-        <div class="result-line">
-          <span class="step">[ 02 ] AUTHENTICATION</span>
-          <span id="statusPill" class="status-pill">STARTING</span>
+      <div id="result" class="result">
+        <div class="result-top">
+          <span id="statusPill" class="status-pill">STATUS</span>
         </div>
 
-        <div id="message" class="message">
-          Initializing secure session...
-        </div>
+        <p id="message"></p>
 
-        <div id="codeBox" class="code-box hidden">
-          <div id="code" class="code">--------</div>
-          <button id="copyBtn" class="copy" type="button">
+        <div id="codeBox" class="code-box">
+          <span class="code-label">YOUR PAIRING CODE</span>
+          <strong id="code"></strong>
+          <button type="button" id="copyBtn" class="copy-btn">
             COPY CODE
           </button>
         </div>
 
-        <div id="instructions" class="instructions hidden">
-          Open WhatsApp → Linked devices → Link a device →
-          Link with phone number instead. Enter the code above.
-        </div>
+        <p id="instructions" class="instructions"></p>
+      </div>
 
+      <div class="security-note">
+        <span>◇</span>
+        Only connect a WhatsApp account you own or are authorised to manage.
       </div>
     </section>
 
-    <section class="notice">
-      <span class="notice-icon">!</span>
-      <p>
-        <strong>SECURITY PROTOCOL</strong><br>
-        Only connect a WhatsApp account you own or are authorized
-        to manage. Never share your pairing code or credentials.
-      </p>
+    <section class="steps-card">
+      <div class="section-title">
+        <span class="section-icon">03</span>
+        <div>
+          <h3>How to connect</h3>
+          <p>Three simple steps</p>
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step">
+          <span>01</span>
+          <p>Enter your WhatsApp number.</p>
+        </div>
+
+        <div class="step">
+          <span>02</span>
+          <p>Generate and copy your pairing code.</p>
+        </div>
+
+        <div class="step">
+          <span>03</span>
+          <p>Open WhatsApp → Linked Devices → Link with phone number.</p>
+        </div>
+      </div>
     </section>
 
-    <div class="system-footer">
-      <span>SHADOW NETWORK</span>
-      <span>VERSION 2026</span>
-    </div>
+    <section class="links-card">
+      <h3>SHADOW COMMUNITY</h3>
+      <p>Follow updates and contact the developer.</p>
+
+      <div class="link-buttons">
+        <a
+          href="https://whatsapp.com/channel/0029Vb794NKBadmdwkPN6i0B"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="link-btn channel-btn"
+        >
+          <span>◉</span>
+          JOIN WHATSAPP CHANNEL
+          <span>↗</span>
+        </a>
+
+        <a
+          href="https://wa.me/254107065646"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="link-btn contact-btn"
+        >
+          <span>✆</span>
+          CONTACT DEVELOPER
+          <span>↗</span>
+        </a>
+      </div>
+    </section>
 
     <footer>
-      𝐒𝚳𝚰𝐋𝚵 𝚳𝚯𝐃𝐙 ©2026
+      <div class="footer-brand">亗 SHADOW MD PAIR</div>
+      <p>Developed by <strong>𝐒𝚳𝚰𝐋𝚵 𝚳𝚯𝐃𝚯</strong></p>
+      <small>© 2026 SHADOW MD. All rights reserved.</small>
     </footer>
 
   </main>
