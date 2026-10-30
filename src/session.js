@@ -31,8 +31,11 @@ const { handleMessages, onSessionOpen, handleCalls, handleGroupUpdate, handlePre
 const { createSessionSettings } = require('./lib/settings');
 const log = require('./lib/logger');
 
-const AUTH_ROOT = path.join(process.cwd(), 'session');
-const DATA_ROOT = path.join(process.cwd(), 'data', 'sessions');
+// Set SHADOW_DATA_DIR to a persistent-disk mount (for example /var/data on Render).
+// When unset, keep the original project-local storage layout.
+const STORAGE_ROOT = process.env.SHADOW_DATA_DIR || process.cwd();
+const AUTH_ROOT = path.join(STORAGE_ROOT, 'session');
+const DATA_ROOT = path.join(STORAGE_ROOT, 'data', 'sessions');
 
 // sessionId -> { sock, settings, stopping, wiped }
 const activeSessions = new Map();
@@ -142,7 +145,7 @@ let versionCache = { at: 0, version: undefined };
 async function waVersion() {
     if (versionCache.version && Date.now() - versionCache.at < 6 * 3600 * 1000) return versionCache.version;
     try {
-        const { version } = await fetchLatestBaileysVersion();
+        const version = await waVersion();
         versionCache = { at: Date.now(), version };
     } catch (err) {
         log.warn('session', `could not fetch WhatsApp version (${err.message}) - using ${versionCache.version ? 'cached' : 'built-in'} version`);
@@ -190,7 +193,7 @@ async function startSession(sessionId, opts = {}) {
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(authDir(sessionId));
-    const { version } = await fetchLatestBaileysVersion();
+    const version = await waVersion();
     if (generations.get(sessionId) !== gen) return null; // removed while we were awaiting
 
     const settings = createSessionSettings(sessionId, config.prefix);
