@@ -26,6 +26,8 @@ const REQUEST_RETENTION_MS = 10 * 60 * 1000;
 const MAX_ACTIVE_REQUESTS = 8;
 const requests = new Map();
 const ipWindows = new Map();
+const cookieParser = require('cookie-parser');
+const adminRouter = require('./admin');
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
