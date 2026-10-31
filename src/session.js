@@ -54,15 +54,16 @@ const DATA_ROOT = path.join(STORAGE_ROOT, 'data', 'sessions');
 fs.mkdirSync(AUTH_ROOT, { recursive: true });
 fs.mkdirSync(DATA_ROOT, { recursive: true });
 
-// sessionId -> session entry
+// Session storage
 const activeSessions = new Map();
-
 const generations = new Map();
 const retries = new Map();
 const timers = new Map();
+const pairingTimers = new Map();
 const replacedAt = new Map();
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const sleep = (ms) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
 
 // Remember sent messages for WhatsApp resend requests.
 const sentStore = new Map();
@@ -95,6 +96,16 @@ function retryCache() {
     };
 }
 
+// Clear pairing timer.
+function clearPairingTimer(sessionId) {
+    const timer = pairingTimers.get(sessionId);
+
+    if (timer) {
+        clearTimeout(timer);
+        pairingTimers.delete(sessionId);
+    }
+}
+
 // Session locking
 const LOCK_FRESH = 30000;
 
@@ -110,7 +121,6 @@ const safeId = (id) => {
 
 const authDir = (id) => path.join(AUTH_ROOT, safeId(id));
 const dataDir = (id) => path.join(DATA_ROOT, safeId(id));
-
 const lockFile = (id) => path.join(authDir(id), '.lock');
 
 function lockConflict(sessionId) {
@@ -145,11 +155,15 @@ function writeLock(sessionId) {
                 ts: Date.now(),
             })
         );
-    } catch {
-        // Lock is a safety net, never a reason to fail.
+    } catch (err) {
+        log.warn(
+            `session:${sessionId}`,
+            `could not write session lock: ${err.message}`
+        );
     }
 }
 
+// Refresh active session locks.
 setInterval(() => {
     for (const id of activeSessions.keys()) {
         writeLock(id);
@@ -234,7 +248,6 @@ let versionCache = {
     version: undefined,
 };
 
-// FIXED: fetchLatestBaileysVersion instead of recursive waVersion().
 async function waVersion() {
     if (
         versionCache.version &&
@@ -307,6 +320,11 @@ async function startSession(sessionId, opts = {}) {
             `this session is already running in another process (pid ${other}). Stop the other copy first.`
         );
     }
+
+    // Cancel previous timers before starting another generation.
+    clearTimeout(timers.get(sessionId));
+    timers.delete(sessionId);
+    clearPairingTimer(sessionId);
 
     const gen = (generations.get(sessionId) || 0) + 1;
 
@@ -386,13 +404,18 @@ async function startSession(sessionId, opts = {}) {
 
     const creds = sock.authState.creds;
 
-    // Request pairing code.
+    // Request pairing code with a tracked timer.
     if (!creds.registered && !creds.me && pairingNumber) {
-        setTimeout(async () => {
+        clearPairingTimer(sessionId);
+
+        const pairingTimer = setTimeout(async () => {
+            pairingTimers.delete(sessionId);
+
             if (
                 entry.stopping ||
                 entry.wiped ||
-                activeSessions.get(sessionId) !== entry
+                activeSessions.get(sessionId) !== entry ||
+                generations.get(sessionId) !== gen
             ) {
                 return;
             }
@@ -404,6 +427,16 @@ async function startSession(sessionId, opts = {}) {
                         customPairingCode
                     )
                     : await sock.requestPairingCode(pairingNumber);
+
+                // Check again after the asynchronous request.
+                if (
+                    entry.stopping ||
+                    entry.wiped ||
+                    activeSessions.get(sessionId) !== entry ||
+                    generations.get(sessionId) !== gen
+                ) {
+                    return;
+                }
 
                 fire(tag, onPairingCode, code);
             } catch (err) {
@@ -419,15 +452,25 @@ async function startSession(sessionId, opts = {}) {
                     );
                 }
 
-                fire(tag, onPairingError, err);
+                if (
+                    !entry.stopping &&
+                    !entry.wiped &&
+                    activeSessions.get(sessionId) === entry
+                ) {
+                    fire(tag, onPairingError, err);
+                }
             }
         }, 3000);
+
+        pairingTimers.set(sessionId, pairingTimer);
     }
 
     sock.ev.on('creds.update', () => {
         if (entry.wiped) return;
 
-        Promise.resolve(saveCreds()).catch(() => {});
+        Promise.resolve(saveCreds()).catch((err) => {
+            log.warn(tag, `could not save credentials: ${err.message}`);
+        });
     });
 
     sock.ev.on('connection.update', (update) => {
@@ -438,6 +481,8 @@ async function startSession(sessionId, opts = {}) {
         const { connection, lastDisconnect } = update;
 
         if (connection === 'close') {
+            clearPairingTimer(sessionId);
+
             const statusCode =
                 lastDisconnect?.error?.output?.statusCode;
 
@@ -580,6 +625,8 @@ async function startSession(sessionId, opts = {}) {
 
         // Connected.
         else if (connection === 'open') {
+            clearPairingTimer(sessionId);
+
             entry.connected = true;
 
             retries.delete(sessionId);
@@ -628,10 +675,12 @@ async function startSession(sessionId, opts = {}) {
 
     // Presence updates.
     sock.ev.on('presence.update', (update) => {
+        if (entry.stopping || entry.wiped) return;
+
         try {
             handlePresence(sock, update);
-        } catch {
-            // Presence is best-effort.
+        } catch (err) {
+            log.warn(tag, `presence handler: ${err.message}`);
         }
     });
 
@@ -650,7 +699,15 @@ async function startSession(sessionId, opts = {}) {
     sock.ev.on('messages.upsert', (upsert) => {
         if (entry.stopping || entry.wiped) return;
 
-        handleMessages(sock, upsert, { sessionId, settings });
+        try {
+            Promise.resolve(
+                handleMessages(sock, upsert, { sessionId, settings })
+            ).catch((err) =>
+                log.warn(tag, `message handler: ${err.message}`)
+            );
+        } catch (err) {
+            log.warn(tag, `message handler: ${err.message}`);
+        }
     });
 
     return sock;
@@ -658,7 +715,8 @@ async function startSession(sessionId, opts = {}) {
 
 /**
  * Fully removes a session:
- * stops reconnects, logs out, closes socket and deletes files.
+ * stops reconnects, cancels pairing requests,
+ * logs out, closes socket and deletes files.
  */
 async function removeSession(sessionId) {
     sessionId = safeId(sessionId);
@@ -671,6 +729,8 @@ async function removeSession(sessionId) {
     clearTimeout(timers.get(sessionId));
     timers.delete(sessionId);
 
+    clearPairingTimer(sessionId);
+
     retries.delete(sessionId);
     replacedAt.delete(sessionId);
 
@@ -681,6 +741,7 @@ async function removeSession(sessionId) {
     if (entry) {
         entry.stopping = true;
         entry.wiped = true;
+        entry.connected = false;
 
         try {
             await Promise.race([
