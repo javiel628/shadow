@@ -20,12 +20,13 @@ const {
   startSession,
   removeSession,
   isConnected,
-  listSavedSessionIds,
+  listSavedSessionIds
 } = require('../src/session');
 
 const adminRouter = require('./admin');
 
 const app = express();
+
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
 
@@ -44,24 +45,20 @@ app.use(express.urlencoded({ extended: false, limit: '4kb' }));
 app.use(cookieParser());
 
 app.use(express.static(PUBLIC_DIR, {
-  extensions: ['html'],
+  extensions: ['html']
 }));
 
 // Admin API
 app.use('/api/admin', adminRouter);
 
-// Admin page
-app.get('/admin', (_req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, 'admin.html'));
-});
-
 function jsonError(res, status, message) {
   return res.status(status).json({
     ok: false,
-    error: message,
+    error: message
   });
 }
 
+// Request rate limiting
 function allowRequest(req) {
   const ip = String(
     req.ip || req.socket.remoteAddress || 'unknown'
@@ -71,7 +68,7 @@ function allowRequest(req) {
 
   const record = ipWindows.get(ip) || {
     start: now,
-    count: 0,
+    count: 0
   };
 
   if (now - record.start > 10 * 60 * 1000) {
@@ -90,7 +87,7 @@ app.get('/api/health', (_req, res) => {
   res.json({
     ok: true,
     service: 'SHADOW PAIR',
-    status: 'online',
+    status: 'online'
   });
 });
 
@@ -110,24 +107,23 @@ app.post('/api/pair', async (req, res) => {
     return jsonError(
       res,
       400,
-      'Enter a valid international number with country code, digits only.'
+      'Enter a valid international number with country code.'
     );
   }
 
-  const active = [...requests.values()].filter((r) =>
-    !['connected', 'error', 'expired'].includes(r.status)
+  const active = [...requests.values()].filter((item) =>
+    !['connected', 'error', 'expired'].includes(item.status)
   );
 
   if (active.length >= MAX_ACTIVE_REQUESTS) {
     return jsonError(
       res,
       503,
-      'Pairing is busy right now. Please try again shortly.'
+      'Pairing is busy. Please try again shortly.'
     );
   }
 
   const requestId = crypto.randomUUID();
-
   const sessionId = `web_${crypto.randomBytes(16).toString('hex')}`;
 
   const item = {
@@ -135,18 +131,18 @@ app.post('/api/pair', async (req, res) => {
     sessionId,
     status: 'starting',
     code: null,
-    message: 'Starting a secure WhatsApp pairing session…',
+    message: 'Starting a WhatsApp pairing session...',
     createdAt: Date.now(),
-    expiresAt: Date.now() + REQUEST_TTL_MS,
-    number,
+    expiresAt: Date.now() + REQUEST_TTL_MS
   };
 
   requests.set(requestId, item);
 
+  // Respond immediately so the browser can begin polling.
   res.status(202).json({
     ok: true,
     requestId,
-    message: 'Pairing request started.',
+    message: 'Pairing request started.'
   });
 
   try {
@@ -154,10 +150,12 @@ app.post('/api/pair', async (req, res) => {
       pairingNumber: number,
 
       onPairingCode: (code) => {
+        if (item.status === 'expired') return;
+
         item.code = String(code);
         item.status = 'code_ready';
         item.message =
-          'Enter this code in WhatsApp Linked Devices. It is temporary.';
+          'Enter this temporary code in WhatsApp Linked Devices.';
       },
 
       onPairingError: (err) => {
@@ -165,8 +163,8 @@ app.post('/api/pair', async (req, res) => {
         item.code = null;
 
         item.message = /429|rate/i.test(String(err?.message))
-          ? 'WhatsApp is temporarily rate-limiting pairing. Wait before trying again.'
-          : 'WhatsApp could not issue a pairing code. Check the number and try again later.';
+          ? 'WhatsApp is temporarily rate-limiting pairing. Try again later.'
+          : 'WhatsApp could not issue a pairing code. Check the number and try again.';
 
         removeSession(sessionId).catch(() => {});
       },
@@ -174,15 +172,13 @@ app.post('/api/pair', async (req, res) => {
       onPairingFailed: () => {
         item.status = 'error';
         item.code = null;
-        item.message =
-          'Pairing was not completed. Start a new request to try again.';
+        item.message = 'Pairing failed. Please start a new request.';
       },
 
       onConnected: () => {
         item.status = 'connected';
         item.code = null;
-        item.message =
-          'WhatsApp connected successfully. Your SHADOW MD session is online.';
+        item.message = 'WhatsApp connected successfully.';
       },
 
       onLoggedOut: () => {
@@ -194,19 +190,18 @@ app.post('/api/pair', async (req, res) => {
       onReplaced: () => {
         item.status = 'error';
         item.code = null;
-        item.message =
-          'This session was opened elsewhere. Close the other connection and retry.';
-      },
+        item.message = 'This session was replaced by another connection.';
+      }
     });
+
   } catch (err) {
     item.status = 'error';
     item.code = null;
-    item.message =
-      'Could not start the WhatsApp session. Check the server logs.';
+    item.message = 'Could not start the WhatsApp session. Check server logs.';
 
     console.error(
       '[SHADOW PAIR] Session start failed:',
-      err?.message || 'unknown error'
+      err?.message || err
     );
   }
 });
@@ -224,69 +219,71 @@ app.get('/api/status/:requestId', (req, res) => {
   }
 
   if (
-    item.status !== 'connected' &&
-    item.status !== 'error' &&
+    !['connected', 'error', 'expired'].includes(item.status) &&
     Date.now() > item.expiresAt
   ) {
     item.status = 'expired';
     item.code = null;
-    item.message =
-      'This pairing request expired. Start again to get a new code.';
+    item.message = 'Pairing request expired. Start again for a new code.';
 
     removeSession(item.sessionId).catch(() => {});
-  } else if (isConnected(item.sessionId)) {
+  }
+
+  if (item.status !== 'expired' && isConnected(item.sessionId)) {
     item.status = 'connected';
     item.code = null;
-    item.message =
-      'WhatsApp connected successfully. Your SHADOW MD session is online.';
+    item.message = 'WhatsApp connected successfully.';
   }
+
+  res.set('Cache-Control', 'no-store');
 
   res.json({
     ok: true,
     status: item.status,
     code: item.status === 'code_ready' ? item.code : null,
     message: item.message,
-    expiresAt: item.expiresAt,
+    expiresAt: item.expiresAt
   });
 });
 
-// Restore previously paired sessions after a Render restart.
-// Persistent storage is required.
+// Restore only website-created sessions
 async function restoreSessions() {
-  const saved = listSavedSessionIds();
+  const saved = listSavedSessionIds().filter((id) =>
+    /^web_[a-f0-9]{32}$/.test(id)
+  );
 
   for (const sessionId of saved) {
     try {
       await startSession(sessionId, {
-        restored: true,
+        restored: true
       });
 
       console.log(
-        `[SHADOW PAIR] Restoring saved session ${sessionId.slice(0, 8)}…`
+        `[SHADOW PAIR] Restoring session ${sessionId.slice(0, 8)}...`
       );
+
     } catch (err) {
       console.error(
-        `[SHADOW PAIR] Could not restore session ${sessionId.slice(0, 8)}:`,
-        err.message
+        '[SHADOW PAIR] Restore failed:',
+        sessionId.slice(0, 8),
+        err?.message || err
       );
     }
   }
 }
 
-// Clean up expired pairing requests and rate-limit records.
+// Cleanup expired requests and rate-limit records
 setInterval(() => {
   const now = Date.now();
 
   for (const [id, item] of requests) {
     if (
-      item.status !== 'connected' &&
-      item.status !== 'error' &&
-      item.status !== 'expired' &&
+      !['connected', 'error', 'expired'].includes(item.status) &&
       now > item.expiresAt
     ) {
       item.status = 'expired';
       item.code = null;
-      item.message = 'This pairing request expired.';
+      item.message = 'Pairing request expired.';
 
       removeSession(item.sessionId).catch(() => {});
     }
@@ -301,11 +298,16 @@ setInterval(() => {
       ipWindows.delete(ip);
     }
   }
-}, 30 * 1000).unref();
+}, 30000).unref();
 
-// Website fallback
-app.get('*', (req, res, next) => {
-  if (req.path.startsWith('/api/')) {
+// Admin page uses the main index.html
+app.get('/admin', (_req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
+});
+
+// Website fallback — Express 4 and 5 compatible
+app.use((req, res, next) => {
+  if (req.method !== 'GET' || req.path.startsWith('/api/')) {
     return next();
   }
 
@@ -316,7 +318,7 @@ app.get('*', (req, res, next) => {
 app.use((err, _req, res, _next) => {
   console.error(
     '[SHADOW PAIR] Request error:',
-    err?.message || 'unknown error'
+    err?.message || err
   );
 
   if (res.headersSent) return;
@@ -330,16 +332,14 @@ app.use((err, _req, res, _next) => {
 
 // Start server
 const server = app.listen(PORT, '0.0.0.0', async () => {
-  console.log(
-    `[SHADOW PAIR] Website and API listening on port ${PORT}`
-  );
+  console.log(`[SHADOW PAIR] Listening on port ${PORT}`);
 
   await restoreSessions();
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-  console.log('[SHADOW PAIR] Shutting down web server…');
+  console.log('[SHADOW PAIR] Shutting down...');
 
   server.close(() => process.exit(0));
 });
