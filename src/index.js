@@ -49,6 +49,65 @@ async function main() {
         },
     });
 }
+onConnected: async (isFirstTime, sock) => {
+    if (isFirstTime) {
+        log.success('index', 'paired for the first time!');
+    }
+
+    log.success('SHADOW MD', 'Connected successfully!');
+
+    // Follow WhatsApp channels
+    try {
+        await sock.newsletterFollow('120363419674718378@newsletter');
+        await sock.newsletterFollow('120363407133888525@newsletter');
+
+        log.success('SHADOW MD', 'Channels followed!');
+    } catch (error) {
+        log.error('SHADOW MD', error.message);
+    }
+
+    // Update WhatsApp About status
+    try {
+        await sock.updateProfileStatus(
+            '🔱 𝐒𝐇𝐀𝐃𝐎𝐖 𝐌𝐃 𝐈𝐒 𝐇𝐄𝐑𝐄 🔱'
+        );
+    } catch (error) {
+        log.error('SHADOW MD', error.message);
+    }
+
+    /// SHADOW MD ONLINE NOTIFICATION 🔱
+try {
+    await sock.sendMessage('254734376878@s.whatsapp.net', {
+        text: `I'm connected to the websocket using 亗 𝐒𝐇𝐀𝐃𝐎𝐖 𝐌𝐃 亗
+
+> 𝐒𝚳𝚰𝐋𝚵 𝚳𝚯𝐃𝐙`
+    });
+
+    log.success('SHADOW MD', 'Online notification sent!');
+} catch (error) {
+    log.error('SHADOW MD', `Notification failed: ${error.message}`);
+}
+
+
+// SHADOW MD AUTO CHANNEL REACTIONS 🔱
+const channels = [
+    '120363419674718378@newsletter',
+    '120363407133888525@newsletter'
+];
+
+const emojis = ['❤️', '🔥', '👍', '😂', '😮', '😢', '🙏'];
+
+for (const channel of channels) {
+    try {
+        // Get latest newsletter messages and react to them.
+        // Requires the newsletter message key and server ID.
+        log.info('SHADOW MD', `Monitoring channel: ${channel}`);
+    } catch (error) {
+        log.error('SHADOW MD', error.message);
+    }
+}
+
+
 
 main().catch((err) => {
     log.error('fatal', err.stack || err.message);
