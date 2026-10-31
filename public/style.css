@@ -847,4 +847,22 @@ footer small {
     font-size: 15px;
   }
 }
+/* FIX: Show pairing results when JavaScript reveals them */
+.result:not(.hidden) {
+  display: block;
+}
+
+.code-box:not(.hidden) {
+  display: block;
+}
+
+.instructions:not(.hidden) {
+  display: block;
+}
+
+/* Keep hidden elements hidden */
+.hidden,
+[hidden] {
+  display: none !important;
+}
 
